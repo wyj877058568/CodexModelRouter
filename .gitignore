@@ -16,3 +16,7 @@ CodexModelRouter.exe
 *.bak-*
 *.paused
 task.backup-*.xml
+
+# 本地-only 素材（不随仓库分发）
+archive/
+share/
