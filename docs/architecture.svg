@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="620" viewBox="0 0 920 620" role="img" aria-label="CodexModelRouter request flow">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#57606a"/>
+    </marker>
+  </defs>
+
+  <rect width="920" height="620" fill="#ffffff"/>
+
+  <text x="40" y="46" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="20" font-weight="600" fill="#24292f">CodexModelRouter — request flow</text>
+  <text x="40" y="70" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#57606a">One provider, two backends: requests are routed by model name.</text>
+
+  <!-- client -->
+  <rect x="290" y="96" width="340" height="66" rx="10" fill="#f6f8fa" stroke="#d0d7de" stroke-width="1.5"/>
+  <text x="460" y="126" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="15" font-weight="600" fill="#24292f">Codex / ChatGPT desktop app</text>
+  <text x="460" y="147" text-anchor="middle" font-family="Consolas, Menlo, monospace" font-size="12" fill="#57606a">model_provider = "openai"</text>
+
+  <!-- client -> router -->
+  <line x1="460" y1="162" x2="460" y2="206" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="474" y="188" font-family="Consolas, Menlo, monospace" font-size="11.5" fill="#0969da">chatgpt_base_url = https://127.0.0.1:8789/backend-api</text>
+
+  <!-- router -->
+  <rect x="200" y="206" width="520" height="150" rx="12" fill="#f6f8fa" stroke="#0969da" stroke-width="1.8"/>
+  <text x="460" y="234" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="16" font-weight="600" fill="#24292f">CodexModelRouter (runs on your machine)</text>
+  <text x="460" y="256" text-anchor="middle" font-family="Consolas, Menlo, monospace" font-size="12" fill="#57606a">127.0.0.1:8789 (HTTPS)   ·   127.0.0.1:8788 (HTTP)</text>
+  <line x1="232" y1="272" x2="688" y2="272" stroke="#d0d7de" stroke-width="1"/>
+  <text x="232" y="294" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#24292f">• routes each request by model name</text>
+  <text x="232" y="315" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#24292f">• refreshes the ChatGPT token and writes it back to auth.json</text>
+  <text x="232" y="336" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#24292f">• WebSocket passthrough (model traffic + remote-control tunnel)</text>
+
+  <!-- router -> deepseek -->
+  <path d="M 330 356 L 330 404" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="342" y="384" font-family="Consolas, Menlo, monospace" font-size="12" fill="#0969da">deepseek-*</text>
+
+  <!-- router -> chatgpt -->
+  <path d="M 590 356 L 590 404" stroke="#57606a" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="602" y="384" font-family="Consolas, Menlo, monospace" font-size="12" fill="#0969da">everything else</text>
+
+  <!-- deepseek -->
+  <rect x="90" y="404" width="320" height="104" rx="10" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+  <text x="250" y="432" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#24292f">api.deepseek.com</text>
+  <text x="250" y="455" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#57606a">Responses API, direct connection</text>
+  <text x="250" y="475" text-anchor="middle" font-family="Consolas, Menlo, monospace" font-size="11.5" fill="#57606a">key: [model_providers.deepseek]</text>
+  <text x="250" y="494" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11.5" fill="#57606a">deepseek-flash · deepseek-v4-pro</text>
+
+  <!-- chatgpt -->
+  <rect x="510" y="404" width="320" height="104" rx="10" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+  <text x="670" y="432" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#24292f">chatgpt.com/backend-api/codex</text>
+  <text x="670" y="455" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12" fill="#57606a">ChatGPT subscription login (HTTP + WebSocket)</text>
+  <text x="670" y="475" text-anchor="middle" font-family="Consolas, Menlo, monospace" font-size="11.5" fill="#57606a">token: ~/.codex/auth.json</text>
+  <text x="670" y="494" text-anchor="middle" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11.5" fill="#57606a">GPT-6-Luna · GPT-5.6-* · GPT-5.5</text>
+
+  <!-- footer -->
+  <line x1="40" y1="546" x2="880" y2="546" stroke="#d0d7de" stroke-width="1"/>
+  <text x="40" y="572" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" fill="#57606a">Runs entirely on localhost. The only outbound traffic goes to api.deepseek.com and chatgpt.com.</text>
+  <text x="40" y="594" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="12.5" fill="#57606a">Account endpoints (avatar, profile, usage panel) travel through the same local HTTPS listener.</text>
+</svg>

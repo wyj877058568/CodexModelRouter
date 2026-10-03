@@ -1,92 +1,158 @@
 # CodexModelRouter
 
-让 **Codex 桌面版（ChatGPT 客户端）在一个模型下拉框里同时使用 DeepSeek 和 ChatGPT 登录模型**的本地分流器。
+**Use DeepSeek and your ChatGPT-login models side by side in the Codex desktop app — one model picker, one provider, no config juggling.**
 
-## 为什么需要它
+[English](README.md) · [简体中文](README.zh-CN.md)
 
-Codex 的模型选择器只切换「模型名」，而 provider（后端）是全局配置；ChatGPT 登录模式走的又是
-`chatgpt.com/backend-api/codex` 这套协议（Responses + WebSocket），不是标准 OpenAI API，
-所以通用网关（LiteLLM、one-api 之类）接不了。
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078d4.svg)](#requirements)
+[![Python: 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776ab.svg)](#development)
 
-本项目在本地起一个 HTTPS 服务，把 Codex 的 `chatgpt_base_url` 指向它，再按模型名分流：
+`CodexModelRouter` is a small, dependency-free local HTTP/HTTPS server that sits between the Codex
+desktop app and the model providers. Codex keeps using its built-in `openai` provider, so the
+account UI keeps working — while the router decides, per request, whether a model is served by
+DeepSeek or by the ChatGPT backend.
 
-| 请求的模型 | 实际去向 |
+![Architecture](docs/architecture.svg)
+
+## Why this exists
+
+- Codex's model picker switches the **model name**; the **provider** is a global setting. You
+  cannot normally mix a DeepSeek-powered model and a ChatGPT-subscription model in one picker.
+- ChatGPT login mode speaks a proprietary protocol (`chatgpt.com/backend-api/codex`, Responses API
+  over HTTP *and* WebSocket). Generic multi-provider gateways such as LiteLLM cannot proxy it,
+  because they expect OpenAI-compatible API keys.
+- Pointing `chatgpt_base_url` at a local server requires HTTPS plus a locally trusted certificate —
+  which is exactly what this project provides.
+
+The result: `deepseek-flash` and `gpt-5.6-luna` can live next to each other in the same dropdown.
+
+## Architecture
+
+```
+Codex / ChatGPT desktop app
+        │  chatgpt_base_url = https://127.0.0.1:8789/backend-api
+        ▼
+CodexModelRouter.exe            ── deepseek-*       → api.deepseek.com
+ 127.0.0.1:8789 HTTPS           ── everything else  → chatgpt.com/backend-api/codex
+ 127.0.0.1:8788 HTTP (legacy)
+```
+
+| Component | Role |
 | --- | --- |
-| `deepseek-*`（DeepSeek-Flash / DeepSeek-V4-Pro） | `https://api.deepseek.com`，用 config.toml 里的 DeepSeek key |
-| 其它（GPT-6-Luna、GPT-5.6-* 等） | ChatGPT 登录后端，用 `~/.codex/auth.json` 里的令牌（可选走系统代理） |
+| `router.py` | The whole router: routing, token refresh, WebSocket passthrough, WS→SSE bridge for DeepSeek. Standard library only. |
+| HTTPS listener (`8789`) | Terminates TLS with a locally generated CA, because Codex requires an HTTPS `chatgpt_base_url`. |
+| HTTP listener (`8788`) | Kept for conversations pinned to the older custom-provider setup. |
+| `auth.json` | ChatGPT login tokens. The router refreshes them automatically on HTTP 401 and writes them back. |
 
-顺带的好处：因为 provider 仍是内置的 `openai`，客户端的**头像、个人资料、用量面板**都能正常显示。
+## Requirements
 
-## 架构
+- Windows 10/11
+- Codex (ChatGPT) desktop app, signed in with a ChatGPT account
+- Python 3.11+ (to generate certificates and to build the executable)
+- A DeepSeek API key
+- Optional: a system HTTP proxy, if your network needs one to reach `chatgpt.com`
 
-```
-Codex 客户端
-   |  chatgpt_base_url = https://127.0.0.1:8789/backend-api
-   v
-CodexModelRouter.exe  -- deepseek-*  -> api.deepseek.com
-   |  (8789 HTTPS / 8788 HTTP)
-   +-- 其它模型 / 账号接口 -> chatgpt.com（HTTP + WebSocket 透传）
-```
-
-- **8789 HTTPS**：给 `chatgpt_base_url` 用，证书是本机自签 CA（`tls/`，需装入「当前用户 → 受信任的根证书颁发机构」）。
-- **8788 HTTP**：兼容早期「自定义 provider」形态的会话。
-- ChatGPT 令牌过期时自动刷新，并写回 `~/.codex/auth.json`。
-- WebSocket 双向透传（模型请求 + 远程控制隧道）；DeepSeek 侧做 WS -> SSE 桥接。
-- 纯 Python 标准库，单文件 `router.py`。
-
-## 快速开始
-
-要求：Windows、已安装并登录 ChatGPT/Codex 桌面版、Python 3.11（生成证书 / 打包用）、DeepSeek API key。
+## Quick start
 
 ```powershell
-# 一键安装（生成证书 -> 信任证书 -> 打包 exe -> 注册开机自启任务 -> 启动）
+git clone https://github.com/<your-user>/CodexModelRouter.git
+cd CodexModelRouter
 powershell -ExecutionPolicy Bypass -File install.ps1
 ```
 
-然后按 `install.ps1` 结尾打印的提示修改 `~/.codex/config.toml`（关键是这两行）：
+`install.ps1` performs every step and prints the config snippet at the end:
+
+1. generates a local CA + server certificate (`make-tls-cert.py`),
+2. trusts the CA in *Current User → Trusted Root Certification Authorities*,
+3. creates `browser-header-paths.txt` with a safe default,
+4. builds `CodexModelRouter.exe` (PyInstaller),
+5. registers the logon scheduled task and starts the router.
+
+Then add this to `%USERPROFILE%\.codex\config.toml`:
 
 ```toml
 model_provider = "openai"
 chatgpt_base_url = "https://127.0.0.1:8789/backend-api"
+model_catalog_json = "~/.codex/models.json"
+
+[model_providers.deepseek]
+base_url = "http://127.0.0.1:8788/"
+wire_api = "responses"
+experimental_bearer_token = "sk-your-deepseek-key"
 ```
 
-并保证 `~/.codex/models.json`（模型目录）里同时包含 DeepSeek 与 ChatGPT 的模型。最后重启 Codex 客户端即可。
+Make sure `~/.codex/models.json` lists both families of models, then restart the app.
 
-## 日常使用
-
-- **开机自启**：计划任务 `CodexModelRouter`（登录时启动 + 每 5 分钟自检）。
-- **手动启停**：`start-router.cmd` / `stop-router.cmd`。
-- **日志**：`router.log`（每行一条：走哪条腿、模型、状态码、耗时、是否走代理）。
-- **不要手动结束 `CodexModelRouter.exe`**：它是模型请求的唯一出口，杀掉等于让 Codex 断网
-  （表现为登录不上、发不出消息）。计划任务会在 5 分钟内自动把它拉回来。
-
-## 已知问题与设计取舍
-
-1. **头像 / 个人资料接口偶发 403**
-   Cloudflare 会对「不太像浏览器」的请求头返回挑战页。用 `browser-header-paths.txt` 按路径放行
-   指定接口（默认只放行 `/backend-api/profiles/me`）。改这个文件**立即生效，无需重启**。
-2. **免费账号额度用尽时会禁用发送键**
-   如果放行全部接口，Codex 会读到「Codex 额度已用尽」，于是把发送按钮置灰——哪怕你用的是 DeepSeek。
-   因此默认只放行头像接口。等额度恢复或升级后，可以把放行清单清空。
-3. **远程控制（手机连接）**
-   隧道走 `chatgpt_base_url`，本项目已支持服务端驱动的 WebSocket 转发；但该功能还受账号 MFA、
-   套餐、以及客户端自带插件包版本影响。
-4. **打包后改代码需要重新打包**：`build-exe.ps1` 一键重建；也可以直接用 `python router.py` 跑。
-
-## 卸载
+## Manual setup
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File uninstall.ps1             # 停止 + 删除计划任务
-powershell -ExecutionPolicy Bypass -File uninstall.ps1 -RemoveCert # 同时移除受信任证书
+python make-tls-cert.py                                                    # 1. certificates
+Import-Certificate tls\ca.crt -CertStoreLocation Cert:\CurrentUser\Root    # 2. trust the CA
+powershell -ExecutionPolicy Bypass -File build-exe.ps1                     # 3. build (optional)
+schtasks /create /tn CodexModelRouter /xml task-template.xml /f            # 4. autostart (edit paths first)
+start-router.cmd                                                           # 5. run
 ```
 
-## 开发
+## Daily use
 
-- `router.py`：唯一的核心代码，纯标准库。
-- `build-exe.ps1`：PyInstaller 打包成 `CodexModelRouter.exe`（带图标）。
-- `make-tls-cert.py`：生成本地 CA 与服务器证书（仅本机使用，不要提交 `tls/`）。
-- 改动历史见 [CHANGELOG.md](CHANGELOG.md)。
+- **Autostart**: the `CodexModelRouter` scheduled task runs at logon and re-checks every 5 minutes.
+- **Start / stop manually**: `start-router.cmd` / `stop-router.cmd`.
+- **Logs**: `router.log`, one JSON line per request (leg, model, status, bytes, duration, proxy).
+- **Do not kill `CodexModelRouter.exe`**: it is the only path model requests can take. Killing it
+  makes Codex look "logged out" or unable to send messages until the task restarts it.
+
+## Configuration
+
+| Setting | Default | Notes |
+| --- | --- | --- |
+| `ROUTER_PORT` | `8788` | HTTP listener (legacy provider). |
+| `ROUTER_TLS_PORT` | `8789` | HTTPS listener used by `chatgpt_base_url`. |
+| `ROUTER_PROXY` | *(system proxy)* | `none` forces direct connections; `host:port` forces a specific proxy. |
+| `ROUTER_UPSTREAM_TIMEOUT` | `900` | Upstream socket timeout in seconds. |
+| `browser-header-paths.txt` | `/backend-api/profiles/me` | Path prefixes that get browser-like request headers (see below). |
+
+## Design notes and known trade-offs
+
+1. **Cloudflare and the profile endpoints.** Some account endpoints
+   (`/backend-api/profiles/me`, `/settings/user`, …) return 403 to clients whose request headers do
+   not look like a browser. `browser-header-paths.txt` lists the paths that may use browser-like
+   headers. It is re-read on every request, so edits apply instantly — no restart needed.
+2. **Free accounts with exhausted quota.** If *all* account endpoints are proxied, Codex learns that
+   the Codex quota is used up and disables the send button — even when the selected model is
+   DeepSeek. That is why the default allow-list only covers the avatar/profile endpoint.
+   Restore it once the quota resets or the account is upgraded.
+3. **Remote control (phone ↔ desktop).** The tunnel goes through `chatgpt_base_url`; the router
+   forwards server-driven WebSockets. The feature also depends on account MFA, plan, and the
+   client's bundled plugin version.
+4. **Rebuild after editing `router.py`.** Run `build-exe.ps1` and restart the router. You can also
+   run `python router.py` directly during development.
+
+## Troubleshooting
+
+| Symptom | Likely cause / fix |
+| --- | --- |
+| Codex cannot send anything, looks logged out | The router is not running. Run `start-router.cmd` or `schtasks /run /tn CodexModelRouter`. |
+| Only GPT models fail | The system proxy is off, or the ChatGPT session expired. Check `router.log`. |
+| Avatar/profile page stays empty | Add `/backend-api/profiles/me` to `browser-header-paths.txt`. |
+| Send button is greyed out | Some allow-listed endpoint exposed the exhausted quota. Clear the allow-list or upgrade the plan. |
+| Port already in use | Another router instance is running; only one can bind 8788/8789. |
+
+## Uninstall
+
+```powershell
+powershell -ExecutionPolicy Bypass -File uninstall.ps1             # stop + remove the task
+powershell -ExecutionPolicy Bypass -File uninstall.ps1 -RemoveCert # also remove the trusted CA
+```
+
+## Development
+
+- `router.py` — the entire router, standard library only.
+- `build-exe.ps1` — PyInstaller build (icon included, output `CodexModelRouter.exe`).
+- `make-tls-cert.py` — generates `tls/ca.crt`, `tls/server.crt`, `tls/server.key`.
+  `tls/` is git-ignored on purpose; never commit private keys.
+- Change history: [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
-MIT，见 [LICENSE](LICENSE)。
+[MIT](LICENSE)
