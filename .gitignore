@@ -1,0 +1,18 @@
+# 证书与私钥：绝不提交（每台机器自己生成）
+tls/
+
+# 运行期产物
+router.log
+router.log.1
+__pycache__/
+build/
+dist/
+*.spec
+
+# 打包产物（用 build-exe.ps1 生成，不入库）
+CodexModelRouter.exe
+
+# 本地备份 / 历史文件
+*.bak-*
+*.paused
+task.backup-*.xml
