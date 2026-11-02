@@ -122,6 +122,26 @@ start-router.cmd                                                           # 5. 
 4. **改了 `router.py` 要重新打包**：跑 `build-exe.ps1` 再重启路由器；开发时也可以直接
    `python router.py`。
 
+## 模式切换
+
+`switch-mode.ps1` 在两种模式之间切换。两者都会先给 `config.toml` 打一份带时间戳的备份，
+并且**都需要重启 Codex 客户端**才生效。
+
+| 模式 | `config.toml` | 路由器 + 计划任务 | 可用模型 |
+| --- | --- | --- | --- |
+| `router` | `chatgpt_base_url = "https://127.0.0.1:8789/backend-api"` | 启用并运行 | DeepSeek + GPT |
+| `native` | 注释掉 `chatgpt_base_url` | 停止并禁用任务 | 仅 GPT，官方直连 |
+
+```powershell
+powershell -ExecutionPolicy Bypass -File switch-mode.ps1 -Mode status   # 只读，不改任何东西
+powershell -ExecutionPolicy Bypass -File switch-mode.ps1 -Mode native
+powershell -ExecutionPolicy Bypass -File switch-mode.ps1 -Mode router
+```
+
+`-Mode status` 还会显示当前登录的邮箱、套餐类型和工作空间（account id）——刚换到公司
+Business/Enterprise 账号时用来确认很方便。**换账号不需要改路由器**：路由器每次请求都会
+重新读取 `auth.json`。
+
 ## 常见问题
 
 | 现象 | 可能原因 / 处理 |

@@ -128,6 +128,26 @@ start-router.cmd                                                           # 5. 
 4. **Rebuild after editing `router.py`.** Run `build-exe.ps1` and restart the router. You can also
    run `python router.py` directly during development.
 
+## Switching modes
+
+`switch-mode.ps1` flips between two operating modes. Both write a timestamped backup of
+`config.toml` first, and both require a **restart of the Codex desktop app**.
+
+| Mode | `config.toml` | Router + scheduled task | Models available |
+| --- | --- | --- | --- |
+| `router` | `chatgpt_base_url = "https://127.0.0.1:8789/backend-api"` | enabled and running | DeepSeek + GPT |
+| `native` | `chatgpt_base_url` commented out | stopped, task disabled | GPT only, official direct connection |
+
+```powershell
+powershell -ExecutionPolicy Bypass -File switch-mode.ps1 -Mode status   # read-only
+powershell -ExecutionPolicy Bypass -File switch-mode.ps1 -Mode native
+powershell -ExecutionPolicy Bypass -File switch-mode.ps1 -Mode router
+```
+
+`-Mode status` also prints the signed-in account, plan type and workspace/account id from
+`~/.codex/auth.json`, which is handy right after signing in to a company (Business/Enterprise)
+workspace. **Switching accounts needs no router change**: `auth.json` is re-read on every request.
+
 ## Troubleshooting
 
 | Symptom | Likely cause / fix |
