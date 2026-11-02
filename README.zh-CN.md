@@ -181,6 +181,7 @@ powershell -ExecutionPolicy Bypass -File uninstall.ps1 -RemoveCert # 同时移�
 - `make-tls-cert.py` —— 生成 `tls/ca.crt`、`tls/server.crt`、`tls/server.key`。
   `tls/` 已被 git 忽略，**绝不要提交私钥**。
 - 改动历史：[CHANGELOG.md](CHANGELOG.md)。
+- 日常运维、故障排查、换号清单：[HANDOVER.md](HANDOVER.md)。
 
 ## 许可证
 
