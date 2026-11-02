@@ -139,6 +139,9 @@ start-router.cmd                                                           # 5. 
   with a personal or a company account;
 - pick **双模型 (router)** or **官方直连 (native)**, read the trade-off description, then press
   **应用并启动 ChatGPT**.
+- **仅启动 ChatGPT** opens the client without touching the configuration. In router mode the
+  launcher first makes sure the local router is listening (and starts the scheduled task if it is
+  not), so "logged out"-looking failures are avoided.
 
 Applying a mode writes a timestamped backup of `config.toml`, turns the router task on or off, and
 restarts the ChatGPT client. `install.ps1` creates one desktop shortcut

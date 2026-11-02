@@ -78,10 +78,26 @@ function Invoke-SwitchMode([string]$mode) {
   if ($LASTEXITCODE -ne 0) { throw "switch-mode.ps1 failed (exit $LASTEXITCODE)" }
 }
 
+function Ensure-Router {
+  $mode = Get-CurrentMode
+  if ($mode -ne "router") { return }
+  $proc = Get-Process CodexModelRouter -ErrorAction SilentlyContinue
+  $listening = (netstat -ano | Select-String -Pattern ":8789\s+.*LISTENING") -ne $null
+  if ($proc -and $listening) { return }
+  schtasks /run /tn CodexModelRouter 2>$null | Out-Null
+  for ($i = 0; $i -lt 20; $i++) {
+    Start-Sleep -Milliseconds 500
+    $listening = (netstat -ano | Select-String -Pattern ":8789\s+.*LISTENING") -ne $null
+    if ($listening) { return }
+  }
+  throw "路由器没有启动（8789 未监听）。请运行 start-router.cmd 或检查计划任务。"
+}
+
 function Restart-ChatGpt {
   $activation = Get-AppActivationId
   Get-Process ChatGPT -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
   Start-Sleep -Seconds 3
+  Ensure-Router
   Start-Process $activation
 }
 
@@ -185,6 +201,12 @@ $applyOnlyButton.Location = New-Object System.Drawing.Point(330, 506)
 $applyOnlyButton.Size = New-Object System.Drawing.Size(126, 40)
 $form.Controls.Add($applyOnlyButton)
 
+$launchButton = New-Object System.Windows.Forms.Button
+$launchButton.Text = "仅启动 ChatGPT"
+$launchButton.Location = New-Object System.Drawing.Point(188, 506)
+$launchButton.Size = New-Object System.Drawing.Size(126, 40)
+$form.Controls.Add($launchButton)
+
 $cancelButton = New-Object System.Windows.Forms.Button
 $cancelButton.Text = "取消"
 $cancelButton.Location = New-Object System.Drawing.Point(668, 506)
@@ -281,6 +303,18 @@ $applyOnlyButton.Add_Click({
     [System.Windows.Forms.MessageBox]::Show("配置已应用。请手动重启 Codex 客户端使配置生效。", "完成")
   } catch {
     [System.Windows.Forms.MessageBox]::Show("应用失败：$($_.Exception.Message)", "错误", "OK", "Error")
+  }
+})
+
+$launchButton.Add_Click({
+  try {
+    $launchButton.Enabled = $false
+    Ensure-Router
+    Start-Process (Get-AppActivationId)
+    $form.Close()
+  } catch {
+    [System.Windows.Forms.MessageBox]::Show("启动失败：$($_.Exception.Message)", "错误", "OK", "Error")
+    $launchButton.Enabled = $true
   }
 })
 
