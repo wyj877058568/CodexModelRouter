@@ -110,7 +110,7 @@ start-router.cmd                                                           # 5. 
 | `ROUTER_TLS_PORT` | `8789` | HTTPS listener used by `chatgpt_base_url`. |
 | `ROUTER_PROXY` | *(system proxy)* | `none` forces direct connections; `host:port` forces a specific proxy. |
 | `ROUTER_UPSTREAM_TIMEOUT` | `900` | Upstream socket timeout in seconds. |
-| `browser-header-paths.txt` | `/backend-api/profiles/me` | Path prefixes that get browser-like request headers (see below). |
+| `browser-header-paths.txt` | `/backend-api/profiles/me`, `/backend-api/conversations` | Path prefixes that get browser-like request headers (see below). |
 
 ## Design notes and known trade-offs
 
@@ -118,6 +118,8 @@ start-router.cmd                                                           # 5. 
    (`/backend-api/profiles/me`, `/settings/user`, …) return 403 to clients whose request headers do
    not look like a browser. `browser-header-paths.txt` lists the paths that may use browser-like
    headers. It is re-read on every request, so edits apply instantly — no restart needed.
+   The default list covers the avatar/profile endpoint and the recent-conversations list, which is
+   what the sidebar spinner waits on.
 2. **Free accounts with exhausted quota.** If *all* account endpoints are proxied, Codex learns that
    the Codex quota is used up and disables the send button — even when the selected model is
    DeepSeek. That is why the default allow-list only covers the avatar/profile endpoint.

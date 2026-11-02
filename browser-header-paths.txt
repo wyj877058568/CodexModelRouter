@@ -3,3 +3,5 @@
 #
 # 当前试验：只放行个人资料接口（头像 / 个人资料页需要它）。
 /backend-api/profiles/me
+/backend-api/conversations
+/backend-api/conversations

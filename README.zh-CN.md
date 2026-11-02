@@ -108,13 +108,14 @@ start-router.cmd                                                           # 5. 
 | `ROUTER_TLS_PORT` | `8789` | HTTPS 监听端口，`chatgpt_base_url` 指向它。 |
 | `ROUTER_PROXY` | *(跟随系统代理)* | 设为 `none` 强制直连；设为 `host:port` 强制走指定代理。 |
 | `ROUTER_UPSTREAM_TIMEOUT` | `900` | 上游超时（秒）。 |
-| `browser-header-paths.txt` | `/backend-api/profiles/me` | 允许使用"浏览器风格请求头"的路径前缀。 |
+| `browser-header-paths.txt` | `/backend-api/profiles/me`、`/backend-api/conversations` | 允许使用"浏览器风格请求头"的路径前缀。 |
 
 ## 设计取舍与已知问题
 
 1. **Cloudflare 与资料类接口**：部分账号接口（`/backend-api/profiles/me`、`/settings/user` 等）
    会对"不像浏览器"的请求头返回 403。`browser-header-paths.txt` 列出允许使用浏览器风格请求头
    的路径；它每次请求都会重新读取，**改完立即生效，不用重启**。
+   默认放行头像/资料接口和「最近」会话列表接口——侧边栏底部那个小转圈等就是后者。
 2. **免费账号额度用尽**：如果放行**全部**账号接口，Codex 会读到"额度已用尽"并禁用发送键——
    哪怕你选的是 DeepSeek。所以默认只放行头像/资料接口；等额度恢复或升级后再清空。
 3. **远程控制（手机 ↔ 桌面）**：隧道走 `chatgpt_base_url`，路由器支持服务端驱动的

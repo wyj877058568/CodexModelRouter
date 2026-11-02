@@ -70,7 +70,8 @@ if (-not (Test-Path $allowList)) {
   @(
     "# 只有列在这里的请求路径会使用浏览器风格请求头，其余保持原样。",
     "# 每行一个路径前缀；文件每次请求都会重新读取，改完立即生效。",
-    "/backend-api/profiles/me"
+    "/backend-api/profiles/me",
+    "/backend-api/conversations"
   ) | Set-Content -LiteralPath $allowList -Encoding UTF8
 } else {
   Write-Host "[3/6] browser-header-paths.txt already present"
