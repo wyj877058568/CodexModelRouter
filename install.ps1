@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   一键安装 CodexModelRouter：生成本地证书 -> 信任证书 -> 打包 exe -> 注册开机自启任务 -> 启动。
@@ -44,10 +44,10 @@ $python = Find-Python
 # 1) 证书
 if (-not (Test-Path "$InstallDir\tls\server.crt") -or -not (Test-Path "$InstallDir\tls\ca.crt")) {
   if (-not $python) { throw "需要 Python 来生成证书；请先安装 Python 3.11+，或手动提供 tls\server.crt / server.key / ca.crt" }
-  Write-Host "[1/5] generating TLS certificate ..."
+  Write-Host "[1/6] generating TLS certificate ..."
   & $python "$InstallDir\make-tls-cert.py"
 } else {
-  Write-Host "[1/5] TLS certificate already present"
+  Write-Host "[1/6] TLS certificate already present"
 }
 
 # 2) 信任证书（当前用户 -> 受信任的根证书颁发机构）
@@ -55,9 +55,9 @@ $caPath = "$InstallDir\tls\ca.crt"
 $ca = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($caPath)
 $inStore = Get-ChildItem Cert:\CurrentUser\Root | Where-Object { $_.Thumbprint -eq $ca.Thumbprint }
 if ($inStore) {
-  Write-Host "[2/5] CA already trusted ($($ca.Thumbprint))"
+  Write-Host "[2/6] CA already trusted ($($ca.Thumbprint))"
 } else {
-  Write-Host "[2/5] trusting CA in CurrentUser\Root ..."
+  Write-Host "[2/6] trusting CA in CurrentUser\Root ..."
   $store = New-Object System.Security.Cryptography.X509Certificates.X509Store("Root", "CurrentUser")
   $store.Open("ReadWrite"); $store.Add($ca); $store.Close()
   Write-Host "      added: $($ca.Thumbprint)"
@@ -66,24 +66,24 @@ if ($inStore) {
 # 3) 放行清单（决定哪些接口使用浏览器风格请求头）
 $allowList = "$InstallDir\browser-header-paths.txt"
 if (-not (Test-Path $allowList)) {
-  Write-Host "[3/5] creating default browser-header-paths.txt"
+  Write-Host "[3/6] creating default browser-header-paths.txt"
   @(
     "# 只有列在这里的请求路径会使用浏览器风格请求头，其余保持原样。",
     "# 每行一个路径前缀；文件每次请求都会重新读取，改完立即生效。",
     "/backend-api/profiles/me"
   ) | Set-Content -LiteralPath $allowList -Encoding UTF8
 } else {
-  Write-Host "[3/5] browser-header-paths.txt already present"
+  Write-Host "[3/6] browser-header-paths.txt already present"
 }
 
 # 4) exe（没有就打包；失败则退回 pythonw）
 $exe = "$InstallDir\CodexModelRouter.exe"
 if ($SkipBuild) {
-  Write-Host "[4/5] build skipped"
+  Write-Host "[4/6] build skipped"
 } elseif (Test-Path $exe) {
-  Write-Host "[4/5] CodexModelRouter.exe already present"
+  Write-Host "[4/6] CodexModelRouter.exe already present"
 } elseif ($python) {
-  Write-Host "[4/5] building CodexModelRouter.exe ..."
+  Write-Host "[4/6] building CodexModelRouter.exe ..."
   try { & "$InstallDir\build-exe.ps1" } catch { Write-Warning "build failed: $_" }
 } else {
   Write-Warning "no python found; will fall back to pythonw + router.py"
@@ -91,9 +91,9 @@ if ($SkipBuild) {
 
 # 5) 计划任务（登录时启动 + 每 5 分钟自检）
 if ($SkipTask) {
-  Write-Host "[5/5] scheduled task skipped"
+  Write-Host "[5/6] scheduled task skipped"
 } else {
-  Write-Host "[5/5] registering scheduled task '$TaskName' ..."
+  Write-Host "[5/6] registering scheduled task '$TaskName' ..."
   if (Test-Path $exe) { $command = $exe; $arguments = "" }
   else {
     $pythonw = "$(Split-Path $python -Parent)\pythonw.exe"
@@ -145,6 +145,21 @@ if ($SkipTask) {
   Set-Content -LiteralPath $tmpXml -Value $xml -Encoding Unicode
   schtasks /create /tn $TaskName /xml $tmpXml /f | Out-Null
   schtasks /run /tn $TaskName | Out-Null
+}
+
+# 6) desktop shortcut -> the single-entry launcher
+$launcher = Join-Path $InstallDir "cmr-launcher.ps1"
+if (Test-Path $launcher) {
+  Write-Host "[6/6] creating the desktop launcher shortcut ..."
+  $desktop = [Environment]::GetFolderPath("Desktop")
+  $ws = New-Object -ComObject WScript.Shell
+  $lnk = $ws.CreateShortcut((Join-Path $desktop "CodexModelRouter 启动器.lnk"))
+  $lnk.TargetPath = "powershell.exe"
+  $lnk.Arguments = "-WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `"$launcher`""
+  $lnk.WorkingDirectory = $InstallDir
+  $lnk.IconLocation = Join-Path $InstallDir "CodexModelRouter.ico"
+  $lnk.Description = "CodexModelRouter 启动器：选账号 + 选模式，应用并启动 ChatGPT"
+  $lnk.Save()
 }
 
 Start-Sleep -Seconds 5

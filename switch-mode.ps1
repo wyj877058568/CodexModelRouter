@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   Switch CodexModelRouter between "router" mode (DeepSeek + ChatGPT) and "native" mode (official ChatGPT only).

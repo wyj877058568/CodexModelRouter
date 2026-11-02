@@ -128,6 +128,20 @@ start-router.cmd                                                           # 5. 
 4. **Rebuild after editing `router.py`.** Run `build-exe.ps1` and restart the router. You can also
    run `python router.py` directly during development.
 
+## The launcher (single entry point)
+
+`cmr-launcher.ps1` is the recommended entry point — one window, one decision:
+
+- it shows the signed-in account (email, plan, workspace id), the current mode and the router state;
+- **登录 / 切换账号…** starts `codex login` (the OAuth page opens in your browser) so you can sign in
+  with a personal or a company account;
+- pick **双模型 (router)** or **官方直连 (native)**, read the trade-off description, then press
+  **应用并启动 ChatGPT**.
+
+Applying a mode writes a timestamped backup of `config.toml`, turns the router task on or off, and
+restarts the ChatGPT client. `install.ps1` creates one desktop shortcut
+(`CodexModelRouter 启动器`) for it; `switch-mode.ps1` remains the CLI equivalent.
+
 ## Switching modes
 
 `switch-mode.ps1` flips between two operating modes. Both write a timestamped backup of

@@ -122,6 +122,18 @@ start-router.cmd                                                           # 5. 
 4. **改了 `router.py` 要重新打包**：跑 `build-exe.ps1` 再重启路由器；开发时也可以直接
    `python router.py`。
 
+## 启动器（唯一入口）
+
+`cmr-launcher.ps1` 是推荐的日常入口——一个窗口、一次选择：
+
+- 显示当前登录账号（邮箱、套餐、工作空间 id）、当前模式、路由器运行状态；
+- **登录 / 切换账号…** 会调用 `codex login`（浏览器打开 OAuth 页面），可以用个人账号或公司账号登录；
+- 选择 **双模型 (router)** 或 **官方直连 (native)**，窗口里会给出代价与风险说明，然后点
+  **应用并启动 ChatGPT**。
+
+应用时会自动备份 `config.toml`、启用/停用路由计划任务，并重启 ChatGPT 客户端。
+`install.ps1` 会创建**一个**桌面快捷方式（`CodexModelRouter 启动器`）；`switch-mode.ps1` 是等价的命令行版本。
+
 ## 模式切换
 
 `switch-mode.ps1` 在两种模式之间切换。两者都会先给 `config.toml` 打一份带时间戳的备份，

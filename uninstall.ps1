@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   卸载 CodexModelRouter：停止并删除计划任务、（可选）移除受信任证书。

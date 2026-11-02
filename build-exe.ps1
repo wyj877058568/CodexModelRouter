@@ -1,4 +1,4 @@
-# Rebuild CodexModelRouter.exe from router.py.
+﻿# Rebuild CodexModelRouter.exe from router.py.
 # Run this after editing router.py, then restart the router.
 $ErrorActionPreference = "Stop"
 
